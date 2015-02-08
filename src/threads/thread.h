@@ -143,4 +143,8 @@ int thread_get_load_avg (void);
 bool 
 cmp_ticks (const struct list_elem *l, const struct list_elem *r,
            void *aux);
+
+bool 
+cmp_priority (const struct list_elem *l, const struct list_elem *r,
+           void *aux UNUSED);
 #endif /* threads/thread.h */
