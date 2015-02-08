@@ -200,7 +200,9 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  enum old_level = intr_disable();
+  check_highest_priority();
+  intr_set_level(old_level);
   return tid;
 }
 
@@ -605,4 +607,18 @@ cmp_priority (const struct list_elem *l, const struct list_elem *r,
   struct thread *tl = list_entry(l, struct thread, elem);
   struct thread *tr = list_entry(r, struct thread, elem);
   return (tl->priority > tr->priority);
+}
+
+/* Check highest priority thread in ready list */
+void check_highest_priority (void)
+{
+  if (list_empty(&ready_list))
+  {
+    return;
+  } 
+  struct thread* first_t = list_entry(list_front(&ready_list), struct thread, elem);
+  if (thread_current ()->priority < first_t->priority)
+  {
+    thread_yield ();
+  }
 }
