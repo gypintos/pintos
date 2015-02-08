@@ -200,7 +200,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  enum old_level = intr_disable();
+  enum intr_level old_level = intr_disable();
   check_highest_priority();
   intr_set_level(old_level);
   return tid;
