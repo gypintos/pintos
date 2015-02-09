@@ -476,7 +476,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   
   t->orig_priority = priority;
-  t->lock_require = NULL;
+  t->lock_required = NULL;
   list_init(&t->dona_list);
 
   /* */
@@ -650,13 +650,13 @@ release_lock_donors(struct lock *lock){
 void priority_donate(void){
   int cur_depth = 0;
   struct thread *cur = thread_current();
-  struct lock lock_required = cur->lock_required;
+  struct lock *lock_required = cur->lock_required;
   while (cur_depth < MAX_DEPTH && 
          lock_required!= NULL &&
          lock_required->holder != NULL && 
          lock_required->holder->priority < cur->priority){
     cur_depth++;
-    lock_required->priority = cur->priority;
+    lock_required->holder->priority = cur->priority;
     cur = lock_required->holder;
     lock_required = cur->lock_required;
   }

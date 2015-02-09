@@ -69,7 +69,7 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0) 
     {
       priority_donate();
-      list_insert_ordered (&sema->waiters, &thread_current ()->elem
+      list_insert_ordered (&sema->waiters, &thread_current ()->elem,
                            (list_less_func *) &cmp_priority, NULL);
       thread_block ();
     }
@@ -205,7 +205,7 @@ lock_acquire (struct lock *lock)
   enum intr_level old_level = intr_disable();
 
   if (lock->holder != NULL){
-    thread *t = thread_current();
+    struct thread *t = thread_current();
     t->lock_required = lock;
     list_insert_ordered(&lock->holder->dona_list, &t->dona_elem, 
                         (list_less_func *) &cmp_priority, NULL );
@@ -251,7 +251,7 @@ lock_release (struct lock *lock)
   enum intr_level old_level = intr_disable();
   lock->holder = NULL;
   release_lock_donors(lock);
-
+  thread_current()->priority = thread_current()->orig_priority;
   sema_up (&lock->semaphore);
   intr_set_level(old_level);
 }

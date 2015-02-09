@@ -90,7 +90,7 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
-    struct lock *lock_required          /* The required lock which is hold by other thread */
+    struct lock *lock_required;          /* The required lock which is hold by other thread */
     struct list dona_list;              /* A list of threads to donate my pri */
     struct list_elem dona_elem;         /* List element for donation list */
     int orig_priority;                   /* The original priority */
