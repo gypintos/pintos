@@ -342,6 +342,7 @@ thread_set_priority (int new_priority)
   enum intr_level old_level = intr_disable ();
   thread_current ()->priority = new_priority;
   list_sort(&ready_list,(list_less_func *) &cmp_priority, NULL);
+  check_highest_priority();
   intr_set_level (old_level);
 }
 
