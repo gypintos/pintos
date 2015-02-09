@@ -90,6 +90,12 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+    struct lock *lock_required          /* The required lock which is hold by other thread */
+    struct list dona_list;              /* A list of threads to donate my pri */
+    struct list_elem dona_elem;         /* List element for donation list */
+    int orig_priority;                   /* The original priority */
+
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -147,4 +153,7 @@ cmp_ticks (const struct list_elem *l, const struct list_elem *r,
 bool 
 cmp_priority (const struct list_elem *l, const struct list_elem *r,
            void *aux UNUSED);
+void check_highest_priority (void);
+void release_lock_donors(struct lock *lock);
+void priority_donate(void);
 #endif /* threads/thread.h */

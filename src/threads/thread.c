@@ -20,6 +20,9 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/* Maximum depth of donation*/
+#define MAX_DEPTH 8
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -471,7 +474,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  
+  t->orig_priority = priority;
+  t->lock_require = NULL;
+  list_init(&t->dona_list);
 
+  /* */
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -611,7 +619,8 @@ cmp_priority (const struct list_elem *l, const struct list_elem *r,
 }
 
 /* Check highest priority thread in ready list */
-void check_highest_priority (void)
+void 
+check_highest_priority (void)
 {
   if (list_empty(&ready_list))
   {
@@ -621,5 +630,34 @@ void check_highest_priority (void)
   if (thread_current ()->priority < first_t->priority)
   {
     thread_yield ();
+  }
+}
+
+/* Remove all donors that waiting for lock hold by current thread */
+void
+release_lock_donors(struct lock *lock){
+  struct thread *cur = thread_current();
+  struct list_elem *e = list_begin(&cur->dona_list);
+  for (; e!=list_end(&cur->dona_list); e = list_next(e)){
+    struct thread* t = list_entry(e, struct thread, dona_elem);
+    if (t->lock_required == lock){
+      list_remove(e);
+    }
+  }
+}
+
+/* Donate priority of current thread to others*/
+void priority_donate(void){
+  int cur_depth = 0;
+  struct thread *cur = thread_current();
+  struct lock lock_required = cur->lock_required;
+  while (cur_depth < MAX_DEPTH && 
+         lock_required!= NULL &&
+         lock_required->holder != NULL && 
+         lock_required->holder->priority < cur->priority){
+    cur_depth++;
+    lock_required->priority = cur->priority;
+    cur = lock_required->holder;
+    lock_required = cur->lock_required;
   }
 }
