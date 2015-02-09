@@ -607,7 +607,7 @@ cmp_priority (const struct list_elem *l, const struct list_elem *r,
 {
   struct thread *tl = list_entry(l, struct thread, elem);
   struct thread *tr = list_entry(r, struct thread, elem);
-  return (tl->priority >= tr->priority);
+  return (tl->priority > tr->priority);
 }
 
 /* Check highest priority thread in ready list */
