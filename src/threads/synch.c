@@ -274,6 +274,11 @@ struct semaphore_elem
     struct semaphore semaphore;         /* This semaphore. */
   };
 
+/*Compares two semaphore on its thread's priority, return the higher*/
+bool cmp_sema_priority(const struct list_elem *l,
+                       const struct list_elem *r,
+                       void *aux);
+
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
    code to receive the signal and act upon it. */
@@ -317,8 +322,6 @@ cond_wait (struct condition *cond, struct lock *lock)
   
   sema_init (&waiter.semaphore, 0);
   list_push_back (&cond->waiters, &waiter.elem);
-  //list_insert_ordered(&cond->waiters,&waiter.elem,
-  //                    (list_less_func *) &cmp_priority,NULL); 
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -339,9 +342,11 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters)) 
+  if (!list_empty (&cond->waiters)){
+    list_sort(&cond->waiters, (list_less_func *) &cmp_sema_priority, NULL);
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
+  }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -360,4 +365,23 @@ cond_broadcast (struct condition *cond, struct lock *lock)
     cond_signal (cond, lock);
 }
 
+/* Compares semaphores' holding threads priority, return the higher one*/
+bool cmp_sema_priority(const struct list_elem *l,
+                       const struct list_elem *r,
+                       void *aux UNUSED)
+{
+  struct semaphore_elem *sema_l = list_entry(l, struct semaphore_elem, elem);
+  struct semaphore_elem *sema_r = list_entry(r, struct semaphore_elem, elem);
+  if (list_empty(&sema_l->semaphore.waiters)){
+    return false;
+  } 
+  if (list_empty(&sema_r->semaphore.waiters)){
+    return true;
+  }
+  struct thread *tl = list_entry(list_front(&sema_l->semaphore.waiters),
+                                 struct thread, elem);
+  struct thread *tr = list_entry(list_front(&sema_r->semaphore.waiters),
+                                 struct thread, elem);
+  return (tl->priority > tr->priority);
+}
 
