@@ -156,4 +156,5 @@ cmp_priority (const struct list_elem *l, const struct list_elem *r,
 void check_highest_priority (void);
 void release_lock_donors(struct lock *lock);
 void priority_donate(void);
+int next_priority(void);
 #endif /* threads/thread.h */

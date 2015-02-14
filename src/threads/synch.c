@@ -251,7 +251,7 @@ lock_release (struct lock *lock)
   enum intr_level old_level = intr_disable();
   lock->holder = NULL;
   release_lock_donors(lock);
-  thread_current()->priority = thread_current()->orig_priority;
+  thread_current()->priority = next_priority();
   sema_up (&lock->semaphore);
   intr_set_level(old_level);
 }
@@ -317,6 +317,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   
   sema_init (&waiter.semaphore, 0);
   list_push_back (&cond->waiters, &waiter.elem);
+  //list_insert_ordered(&cond->waiters,&waiter.elem,
+  //                    (list_less_func *) &cmp_priority,NULL); 
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);

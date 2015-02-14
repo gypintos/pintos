@@ -343,9 +343,16 @@ void
 thread_set_priority (int new_priority) 
 {
   enum intr_level old_level = intr_disable ();
-  thread_current ()->priority = new_priority;
-  list_sort(&ready_list,(list_less_func *) &cmp_priority, NULL);
-  check_highest_priority();
+  struct thread *cur = thread_current();
+  cur->orig_priority = new_priority;
+  if(list_empty(&cur->dona_list)){
+    cur->priority = new_priority;
+    list_sort(&ready_list,(list_less_func *) &cmp_priority, NULL);
+    check_highest_priority();
+  }
+  //thread_current ()->priority = new_priority;
+  //list_sort(&ready_list,(list_less_func *) &cmp_priority, NULL);
+  //check_highest_priority();
   intr_set_level (old_level);
 }
 
@@ -659,5 +666,18 @@ void priority_donate(void){
     lock_required->holder->priority = cur->priority;
     cur = lock_required->holder;
     lock_required = cur->lock_required;
+  }
+}
+
+/*update current thread's priority based on its dona_list*/
+int next_priority(void){
+  struct thread *cur = thread_current();
+  if (list_empty(&cur->dona_list)){
+    return cur->orig_priority;
+  }
+  struct list_elem *e = list_begin(&cur->dona_list);
+  struct thread *first_t = list_entry(e, struct thread, dona_elem);
+  if (cur->orig_priority < first_t->priority){
+    return first_t->priority;
   }
 }
