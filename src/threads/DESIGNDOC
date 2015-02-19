@@ -8,9 +8,9 @@
 
 >> Fill in the names and email addresses of your group members.
 
+Yi Wen <yiwen@ccs.neu.edu>
 FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+
 
 ---- PRELIMINARIES ----
 
@@ -36,7 +36,7 @@ a list of sleeping thread
 
 * thread.h added a member to thread struct:
 	int64_t wake_ticks
-For a thread that is sleeping, this variable indicate when WAKE_TICKS
+For a thread that is sleeping, this variable indicates that when WAKE_TICKS
 is less than global ticks, the thread is done sleeping
 
 
@@ -96,20 +96,92 @@ Also the wake up only hanppens when timer interrupt occurs.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+thread.h
+	/* The required lock which is hold by other thread */
+*   struct lock *lock_required;   	
+	/* A list of other threads which donate their priority to this thread,
+	   since this thread hold the locks other threads need */
+*   struct list dona_list;     
+	/* List element for dona_list */     
+*   struct list_elem dona_elem;    
+ 	/* The original priority when created or set by thread_set_priority*/ 
+*   int orig_priority;             
+
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
 >> .png file.)
+
+The thread uses dona_list to track priority donation.
+
+H,M,L are three threads whcih priority(H)>priority(M)>priority(L)
+
+H -> M [Lock B] -> L[lock A]
+
+Now, L is holding lock A before M is created, M is holding lock B
+before H is created. M waits for lock A to preceed and H waits for
+lock B to proceed.
+
+Suppose at some time, H controls the cpu since H has the highest
+priority. Priority donation happens at this situation:
+
+H.dona_list: null
+H.lock_required = lock B
+
+
+H will donate its priority to M since M has lock B H needs.(H can find
+M by check lock_B.holder). Since M waits for another lock -- lock A,
+the donation will continure until it reach a thread waits no lock.
+In this case, L will get the priority to resume from donation-chain
+begin from H. 
+
+M.dona_list: [H]
+M.lock_required = lock A
+
+L.dona_list: [M]
+L.lock_required = null
+
+L resumes. After L finished, L releases lock A and uses dona_list 
+to return priority to M, M resume to preceed then after it finishes, 
+M releases lock B and uses dona_list to return priority to H and so on
 
 ---- ALGORITHMS ----
 
 >> B3: How do you ensure that the highest priority thread waiting for
 >> a lock, semaphore, or condition variable wakes up first?
 
+Semaphoer.waiters is a sorted list, which means each waiter is inserted
+to the waiters list according to its priority. The highest priority thread
+will come at first of the list. Also, whenever there is priority change 
+among the waiters, it will be sorted again to get updated.
+
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 
+The sequence of events are as follow:
+	1 This thread.lock_required will be updated to the lock it requires
+	2 This thread will find the thread that holds the lock, and add
+	  itself to holder thread's dona_list
+	3 If holder thread's priority is higher than this thread, return
+	4 Set holder thread's priority to this thread's priority
+	5 If holder thread's is waiting no lock, return
+	6 Set this thread to be holder thread, holder thread to be 
+	  holder thread's lock holder, go back to 1
+
+	The depth of the looper is limited by 8 in order to prevent
+	infinite loops.
+
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
+
+The sequence of events are as follow:
+	1 This thread's lock_required field will be set to null
+	2 Threads that waitting for this lock in this thread's dona_list
+	  will be removed.
+	3 This thread's priority will be updated according to its dona_list
+	3 THe highest priority thread that wait for this lock will be read 
+	  status and inserted to thread readly list
+	4 The highest priority thread in the ready list will get executed
+
 
 ---- SYNCHRONIZATION ----
 
@@ -117,10 +189,19 @@ Also the wake up only hanppens when timer interrupt occurs.
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
+While thread's priority is being updated, thread_set_priority is called,
+will cause a race condition. Interrupt has to be disabled when prioriy 
+thread_set_priority is called. As Interrup handler cannot acquire lock,
+we cannot use lock to avoid this race. 
+
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+
+The reason I choose this design is that memory limitation requires using
+variables as fewer as possilbe. Also by using a sorted linked list,
+the priority problem becomes easier to handle.
 
 			   SURVEY QUESTIONS
 			   ================
